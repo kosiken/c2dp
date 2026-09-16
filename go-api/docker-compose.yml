@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/c2dp_go_api?sslmode=disable
+      JWT_SECRET: change-me-for-demo
+      PORT: 8080
+      PUBLIC_BASE_URL: http://localhost:8080
+      UPLOAD_DIR: /app/uploads
+      C2PATOOL_PATH: /usr/local/bin/c2patool
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploaded_images:/app/uploads
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: c2dp_go_api
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d c2dp_go_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  uploaded_images:

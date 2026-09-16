@@ -1,0 +1,8 @@
+.env
+go-api
+tmp/
+uploads/*
+!uploads/.gitkeep
+
+bin/
+.c2dp-upload-*/

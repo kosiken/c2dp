@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-chelsea: #034694;
+  --color-chelsea-dark: #02336d;
+  --color-chelsea-soft: #e7f0ff;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f4f7fb;
+  color: #101828;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
