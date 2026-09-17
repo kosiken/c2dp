@@ -37,6 +37,9 @@ export async function apiRequest<T>(
   const response = await fetch(`${API_URL}${path}`, {
     body,
     headers: {
+      ...(new URL(API_URL).hostname.endsWith('.ngrok-free.app')
+        ? { 'ngrok-skip-browser-warning': '1' }
+        : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers
     },

@@ -21,6 +21,13 @@ export type LivePost = {
 export const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 const API_URL = apiUrl;
 
+// The presenter can fetch uploaded images directly from the local API,
+// even when the API publishes ngrok URLs for audience phones.
+export function localImageUrl(imageUrl: string): string {
+  const source = new URL(imageUrl, 'http://localhost:8080');
+  return `http://localhost:8080${source.pathname}${source.search}${source.hash}`;
+}
+
 export async function listRecentPosts(limit = 4): Promise<LivePost[]> {
   const response = await fetch(`${API_URL}/api/v1/posts`);
   if (!response.ok) throw new Error(`Failed to list posts: ${response.status}`);

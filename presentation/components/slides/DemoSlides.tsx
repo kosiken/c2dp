@@ -3,7 +3,7 @@
 // Demo state belongs here, not in the presentation navigation shell.
 import { useEffect, useState } from 'react';
 import { uploadQrDataUri, uploadUrl } from '@/lib/uploadQr';
-import { assertionsFor, listRecentPosts, signerFor, streamPosts, type LivePost } from '@/lib/liveFeed';
+import { assertionsFor, listRecentPosts, localImageUrl, signerFor, streamPosts, type LivePost } from '@/lib/liveFeed';
 import { combineImages, type CombineResult } from '@/lib/combine';
 
 const steps = ['Take a photo on your phone', 'Upload it to the site', 'Make a post'];
@@ -43,7 +43,7 @@ export function DemoFourteen() {
           const signer = signerFor(post);
           return <div className="feed-card" key={post.id}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={post.image_url} alt={post.caption || 'Uploaded photo'} />
+            <img src={localImageUrl(post.image_url)} alt={post.caption || 'Uploaded photo'} />
             <div className="feed-meta">
               <span className="mono accent">@{post.user.username}</span>
               <span className="feed-line">{assertions.map((a) => a.label).join(' · ') || 'No assertions'}</span>
@@ -84,7 +84,7 @@ export function DemoFifteen() {
     <div className="combine-panel">
       {state.result
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img src={state.result.url} alt="Combined composite image from four audience uploads" className="combine-image" />
+        ? <img src={localImageUrl(state.result.url)} alt="Combined composite image from four audience uploads" className="combine-image" />
         : <div className="asset-missing"><span className="image-cross">＋</span><span>Composite</span><small>Not generated yet</small></div>}
     </div>
   </div>;
