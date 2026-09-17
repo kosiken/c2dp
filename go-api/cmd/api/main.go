@@ -30,7 +30,7 @@ func main() {
 	e.HideBanner = true
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: []string{"*"}}))
 
 	e.Static("/uploads", cfg.UploadDir)
 	e.GET("/health", func(c echo.Context) error {
@@ -48,8 +48,10 @@ func main() {
 
 	posts := v1.Group("/posts")
 	posts.GET("", postHandler.List)
+	posts.GET("/stream", postHandler.Stream)
 	posts.GET("/:id", postHandler.Get)
 	posts.POST("", postHandler.Create, authMiddleware)
+	posts.POST("/combine", postHandler.Combine)
 
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 }

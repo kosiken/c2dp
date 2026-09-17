@@ -16,9 +16,9 @@ export const slides: SlideDefinition[] = [
   {id:'signed-asset',title:'An asset and its credentials',section:'03 / Inside C2PA',component:SignedAsset},
   {id:'chess-puzzle',title:'Your move',section:'04 / Context matters',component:ChessPuzzle},
   {id:'chess-solution',title:'The solution',section:'04 / Context matters',component:ChessSolution},
-  {id:'demo-13',title:'Demo 01',section:'05 / In practice',component:DemoThirteen},
-  {id:'demo-14',title:'Demo 02',section:'05 / In practice',component:DemoFourteen},
-  {id:'demo-15',title:'Demo 03',section:'05 / In practice',component:DemoFifteen},
+  {id:'demo-13',title:"You're the content creators now",section:'05 / In practice',component:DemoThirteen},
+  {id:'demo-14',title:'Watching provenance arrive',section:'05 / In practice',component:DemoFourteen},
+  {id:'demo-15',title:'Provenance through transformation',section:'05 / In practice',component:DemoFifteen},
   {id:'closing',title:'Provenance is not truth',section:'06 / A final thought',component:Closing},
   {id:'questions',title:'Time for questions you may have',section:'07 / Discussion',component:Questions},
 ];

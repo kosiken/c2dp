@@ -1,7 +1,9 @@
 package signing
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -60,4 +62,39 @@ func Sign(ctx context.Context, tool, source, output string) error {
 		return fmt.Errorf("empty signed output")
 	}
 	return nil
+}
+
+// Inspect runs c2patool against an already-signed asset and returns its
+// manifest report (the same JSON `c2patool <path>` prints to stdout).
+func Inspect(ctx context.Context, tool, path string) (json.RawMessage, error) {
+	toolPath, err := exec.LookPath(tool)
+	if err != nil {
+		return nil, fmt.Errorf("find c2patool: %w", err)
+	}
+	toolPath, err = filepath.Abs(toolPath)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, toolPath, path)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, "C2PA") {
+			cmd.Env = append(cmd.Env, env)
+		}
+	}
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("inspecting interrupted: %w", ctx.Err())
+		}
+		return nil, fmt.Errorf("c2patool inspect failed: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	raw := bytes.TrimSpace(stdout.Bytes())
+	if !json.Valid(raw) {
+		return nil, fmt.Errorf("c2patool returned invalid JSON report")
+	}
+	return json.RawMessage(raw), nil
 }

@@ -10,6 +10,19 @@ npm run dev
 
 Open http://localhost:3001. Production: `npm run build && npm start`.
 
+Set `NEXT_NGROK_WEB_APP_URL` to the audience-facing upload site's ngrok URL before
+`npm run dev` / `npm run build` / `npm run typecheck`; each runs `scripts/generate-qr.mjs`
+first (via `pre*` npm hooks), which renders it to a QR code baked into `lib/uploadQr.ts`
+(gitignored, regenerated every run). Leave it unset to see Slide Thirteen's
+"awaiting upload link" placeholder instead.
+
+Set `NEXT_PUBLIC_API_URL` (see `.env.example`; defaults to `http://localhost:8080`) to
+where go-api runs — normally the same machine, so the default is enough. Slide 14 fetches
+recent posts from it and opens `/api/v1/posts/stream` (SSE) to show new uploads live, with
+their C2PA assertions and signer, as they arrive. Slide 15's "Generate Combination" button
+calls `POST /api/v1/posts/combine`, which runs `scripts/combine_signed_images.py` server-side
+against the four most recently uploaded posts and returns the composite's URL and manifest.
+
 - Right / Space: next; Left: previous; F: enter fullscreen; Escape: native browser exit.
 - Visible previous/next and fullscreen controls support mouse and keyboard focus.
 - Slide URLs use hashes, e.g. `/#manifest` or `/#chess-puzzle`.
@@ -23,8 +36,12 @@ Open http://localhost:3001. Production: `npm run build && npm start`.
 workspace; missing slots are labeled, with no fabricated replacement imagery.
 
 Slides 10–16 follow the initial task instructions. Slide 17 adds the outline’s
-Q&A prompt about NFTs. Demo titles are provisional (`Demo 01`–`Demo 03`) pending the remaining
-outline. Slide 10 data is illustrative and never presented as verified credentials.
+Q&A prompt about NFTs. Slide 10 shows `public/images/signed-asset.png`, actually
+signed with c2patool's public development certificate (same manifest shape go-api
+uses); `lib/content.ts`'s `exampleManifest` is read from that image's own manifest,
+not fabricated. Slide 13 (`DemoThirteen`) shows the audience-upload QR code and
+URL; Slide 14 (`DemoFourteen`) streams those uploads live from go-api; Slide 15
+(`DemoFifteen`) combines the four latest uploads into one new signed composite on demand.
 Technical reference: https://spec.c2pa.org/specifications/specifications/2.3/specs/C2PA_Specification
 
 ## Component boundaries
@@ -32,7 +49,9 @@ Technical reference: https://spec.c2pa.org/specifications/specifications/2.3/spe
 - `components/Presentation.tsx`: sizing, hash navigation, keyboard, fullscreen, progress.
 - `lib/slides.ts`: ordered registry of independent slide components.
 - `components/slides/ContentSlides.tsx`: authored slide layouts.
-- `components/slides/DemoSlides.tsx`: three isolated placeholders; no backend behavior.
+- `components/slides/DemoSlides.tsx`: three demo slides, each independent.
+- `lib/liveFeed.ts`: fetch + SSE client for go-api posts, used by Slide 14.
+- `lib/combine.ts`: calls go-api's `/api/v1/posts/combine`, used by Slide 15.
 - `components/ManifestView.tsx`: reusable structural diagram.
 - `components/AssetImage.tsx`: images, including future upload/object URLs.
 

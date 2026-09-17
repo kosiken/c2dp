@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,12 +20,13 @@ import (
 )
 
 type PostHandler struct {
-	cfg config.Config
-	db  *gorm.DB
+	cfg         config.Config
+	db          *gorm.DB
+	broadcaster *Broadcaster
 }
 
 func NewPostHandler(db *gorm.DB, cfg config.Config) *PostHandler {
-	return &PostHandler{cfg: cfg, db: db}
+	return &PostHandler{cfg: cfg, db: db, broadcaster: NewBroadcaster()}
 }
 
 func (h *PostHandler) Create(c echo.Context) error {
@@ -68,13 +70,12 @@ func (h *PostHandler) Create(c echo.Context) error {
 	if err := os.MkdirAll(h.cfg.UploadDir, 0755); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not prepare upload directory")
 	}
-	// Stage outside the publicly served upload directory, on the same filesystem
-	// so publishing the complete signed image can use an atomic rename.
+	// Keep unsigned inputs outside the publicly served upload directory.
 	uploadDir, err := filepath.Abs(h.cfg.UploadDir)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not prepare upload directory")
 	}
-	stage, err := os.MkdirTemp(filepath.Dir(uploadDir), ".c2dp-upload-")
+	stage, err := os.MkdirTemp("", "c2dp-upload-")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not stage upload")
 	}
@@ -94,15 +95,21 @@ func (h *PostHandler) Create(c echo.Context) error {
 		c.Logger().Errorf("sign upload: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not sign image; no post was created")
 	}
+	manifest, err := signing.Inspect(c.Request().Context(), h.cfg.C2PAToolPath, signed)
+	if err != nil {
+		c.Logger().Errorf("inspect signed upload: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "could not read signed image manifest; no post was created")
+	}
 	imagePath := filepath.Join(uploadDir, uuid.NewString()+ext)
-	if err := os.Rename(signed, imagePath); err != nil {
+	if err := publishSigned(signed, imagePath); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not publish signed image")
 	}
 
 	post := models.Post{
-		Caption:   strings.TrimSpace(c.FormValue("caption")),
-		ImagePath: imagePath,
-		UserID:    userID,
+		Caption:      strings.TrimSpace(c.FormValue("caption")),
+		ImagePath:    imagePath,
+		UserID:       userID,
+		ManifestData: models.C2PAManifest(manifest),
 	}
 	if err := h.db.Create(&post).Error; err != nil {
 		_ = os.Remove(imagePath)
@@ -113,6 +120,7 @@ func (h *PostHandler) Create(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not load post")
 	}
 	h.attachImageURL(&post)
+	h.broadcaster.Publish(post)
 
 	return c.JSON(http.StatusCreated, post)
 }
@@ -140,6 +148,41 @@ func (h *PostHandler) Get(c echo.Context) error {
 	return c.JSON(http.StatusOK, post)
 }
 
+// Stream pushes each newly created post over SSE as it happens, for viewers
+// such as the presentation's real-time slide. It sends no backlog; callers
+// that want existing posts too should also call List on connect.
+func (h *PostHandler) Stream(c echo.Context) error {
+	resp := c.Response()
+	resp.Header().Set(echo.HeaderContentType, "text/event-stream")
+	resp.Header().Set("Cache-Control", "no-cache")
+	resp.Header().Set("Connection", "keep-alive")
+	resp.WriteHeader(http.StatusOK)
+	resp.Flush()
+
+	ch := h.broadcaster.Subscribe()
+	defer h.broadcaster.Unsubscribe(ch)
+
+	ctx := c.Request().Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case post, ok := <-ch:
+			if !ok {
+				return nil
+			}
+			data, err := json.Marshal(post)
+			if err != nil {
+				continue
+			}
+			if _, err := fmt.Fprintf(resp, "data: %s\n\n", data); err != nil {
+				return nil
+			}
+			resp.Flush()
+		}
+	}
+}
+
 func (h *PostHandler) attachImageURL(post *models.Post) {
 	filename := filepath.Base(post.ImagePath)
 	post.ImageURL = fmt.Sprintf("%s/uploads/%s", strings.TrimRight(h.cfg.PublicBaseURL, "/"), filename)
@@ -158,4 +201,28 @@ func extensionForContentType(contentType string) string {
 	default:
 		return ""
 	}
+}
+
+// Copy into the destination filesystem before renaming, since uploads may be a
+// Docker volume. Only signed bytes enter the public directory.
+func publishSigned(source, destination string) error {
+	src, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	dst, err := os.CreateTemp(filepath.Dir(destination), ".signed-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(dst.Name())
+	_, copyErr := io.Copy(dst, src)
+	closeErr := dst.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	return os.Rename(dst.Name(), destination)
 }

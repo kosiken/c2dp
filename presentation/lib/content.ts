@@ -4,7 +4,7 @@ export const assets = {
   tanuki: '/images/real-tanuki.jpg',
   chessPuzzle: '/images/chess-puzzle.png',
   chessSolution: '/images/chess-solution.png',
-  signedAsset: '/images/signed-asset.jpg',
+  signedAsset: '/images/signed-asset.png',
 };
 export const journey = ['Camera', 'Photographer', 'Photo Editing', 'News Editor', 'News Website', 'X', 'Viewer'];
 export const lifecycle = ['Content generation', 'Assertion generation', 'Manifest generation', 'Claim signing', 'Embedding or linking', 'Distribution', 'Verification', 'Presentation'];
@@ -15,12 +15,13 @@ export const terms = [
   ['Claim', 'A structure that references assertions and is digitally signed.'],
   ['Manifest', 'Assertions, a claim, and its signature, collected together.'],
 ];
-// Illustrative UI data only: this is neither a real manifest nor a validation result.
+// Real data read from public/images/signed-asset.png's own embedded manifest
+// (signed with c2patool's public development certificate, same as go-api uploads).
 export const exampleManifest = {
-  asset: 'field-study.jpg',
-  generator: 'Example camera / 1.0',
-  actions: ['c2pa.created', 'c2pa.edited'],
-  signer: 'Example publisher',
-  validation: 'Not performed — illustrative data',
+  asset: 'ambquinn-lion-8096155_640.png',
+  generator: 'C2DP upload demo / 1.0.0',
+  actions: ['c2pa.opened'],
+  signer: 'C2PA Test Signing Cert',
+  validation: 'Signature valid — untrusted development certificate',
 };
 export const specificationUrl = 'https://spec.c2pa.org/specifications/specifications/2.3/specs/C2PA_Specification';

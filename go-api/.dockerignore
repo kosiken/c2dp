@@ -6,3 +6,6 @@ README.md
 docker-compose.yml
 tmp/
 uploads/
+
+bin/
+.c2dp-upload-*/
